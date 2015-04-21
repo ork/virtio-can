@@ -26,7 +26,7 @@ struct virtcan_priv {
 	struct virtio_device *vdev;
 	struct virtqueue     *cvq;
 	struct can_priv      *can;
-	struct net_device    *dev;
+	struct napi_struct   *napi;
 };
 
 static int virtcan_start_xmit(struct sk_buff *skb, struct net_device *dev)
@@ -77,6 +77,17 @@ out_close:
 
 static int virtcan_probe(struct virtio_device *vdev)
 {
+	struct net_device   *dev;
+	struct virtcan_priv *priv;
+	u32 clock_freq = 0;
+
+	dev = alloc_candev(sizeof(struct virtcan_priv), 1);
+	if (!dev)
+		return -ENOMEM;
+
+	priv = netdev_priv(dev);
+	priv->can.clock.freq = clock_freq;
+
 	virtio_device_ready(vdev);
 
 	pr_debug("virtcan: registered device %s\n", dev->name);
