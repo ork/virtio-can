@@ -20,7 +20,10 @@
 #include <linux/can.h>
 #include <linux/can/dev.h>
 #include <linux/can/error.h>
+#include <linux/clk.h>
+#include <linux/kernel.h>
 #include <linux/virtio.h>
+#include <linux/virtio_can.h>
 
 /* Communication over virtio-can uses little endian values, according to the
  * virtio spec.
