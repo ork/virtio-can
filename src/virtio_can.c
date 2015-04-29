@@ -118,20 +118,32 @@ static const struct net_device_ops virtcan_netdev_ops = {
 	.ndo_change_mtu = can_change_mtu,
 };
 
+// TODO: Get clocks (timings, ...) through virtio config options
 static int virtcan_probe(struct virtio_device *vdev)
 {
 	struct net_device   *dev;
 	struct virtcan_priv *priv;
 	u32 clock_freq = 0;
 
+	if (!vdev->config->get) {
+		dev_err(&vdev->dev, "%s failure: config access disabled\n",
+		        __func__);
+		return -EINVAL;
+	}
+
+	/* CAN device setup */
 	dev = alloc_candev(sizeof(struct virtcan_priv), 1);
 	if (!dev)
 		return -ENOMEM;
 
-	// TODO: Get clocks (timings, ...) through virtio config options
+	dev->netdev_ops = &virtcan_netdev_ops;
+	dev->flags |= IFF_ECHO;
 
+	/* Network device setup */
 	priv = netdev_priv(dev);
 	priv->can.clock.freq = clock_freq;
+
+	netif_napi_add(dev, &priv->napi, virtcan_poll, VIRTCAN_NAPI_WEIGHT);
 
 	virtio_device_ready(vdev);
 
