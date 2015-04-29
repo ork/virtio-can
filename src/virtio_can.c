@@ -26,7 +26,7 @@ struct virtcan_priv {
 	struct virtio_device *vdev;
 	struct virtqueue     *cvq;
 	struct can_priv      *can;
-	struct napi_struct   *napi;
+	struct napi_struct    napi;
 };
 
 static int virtcan_start_xmit(struct sk_buff *skb, struct net_device *dev)
@@ -96,10 +96,11 @@ static int virtcan_probe(struct virtio_device *vdev)
 static void virtnet_remove(struct virtio_device *vdev)
 {
 	struct virtcan_priv *vi = vdev->priv;
+	struct net_device *dev = dev_get_drvdata(vdev->dev);
 
-	unregister_netdev(vi->dev);
-
-	free_netdev(vi->dev);
+	unregister_netdev(dev);
+	netif_napi_del(&vi->napi);
+	free_netdev(dev);
 }
 
 static struct virtio_device_id id_table[] = {
