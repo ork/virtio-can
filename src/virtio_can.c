@@ -75,6 +75,30 @@ out_close:
 	return err;
 }
 
+static int virtcan_close(struct net_device *dev)
+{
+	struct virtcan_priv *priv = netdev_priv(dev);
+
+	netif_stop_queue(dev);
+	napi_disable(&priv->napi);
+	virtcan_chip_stop(dev);
+
+	free_irq(dev->irq, dev);
+	clk_disable_unprepare(priv->clk_per);
+	clk_disable_unprepare(priv->clk_ipg);
+
+	close_candev(dev);
+
+	return 0;
+}
+
+static const struct net_device_ops virtcan_netdev_ops = {
+	.ndo_open       = virtcan_open,
+	.ndo_stop       = virtcan_stop,
+	.ndo_start_xmit = virtcan_start_xmit,
+	.ndo_change_mtu = can_change_mut,
+};
+
 static int virtcan_probe(struct virtio_device *vdev)
 {
 	struct net_device   *dev;
