@@ -1,6 +1,6 @@
 /* A CAN bus controller driver using virtio.
  *
- * Copyright 2015 Benoît Taine <benoit.taine@openwide.fr> Open Wide Ingénierie
+ * Copyright 2015 Benoît Taine <benoit.taine@openwide.fr> OpenWide Ingénierie
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -163,6 +163,24 @@ static bool virtcan_send_command(struct virtcan_priv *priv, u8 class, u8 cmd,
 	return status == VIRTIO_NET_OK;
 }
 
+static int virtcan_chip_control(struct virtcan_priv *priv, int op)
+{
+	switch (op) {
+	case VIRTIO_CAN_CTRL_CHIP_ENABLE:
+	case VIRTIO_CAN_CTRL_CHIP_DISABLE:
+	case VIRTIO_CAN_CTRL_CHIP_FREEZE:
+	case VIRTIO_CAN_CTRL_CHIP_UNFREEZE:
+	case VIRTIO_CAN_CTRL_CHIP_SOFTRESET:
+		if (!virtcan_send_command(priv, VIRTIO_CAN_CTRL_CHIP, op, NULL))
+			return -ETIMEDOUT;
+		break;
+	default:
+		pr_debug("virtcan: Unknown chip control operation: %X\n", op);
+	}
+
+	return 0;
+}
+
 // TODO: Get clocks (timings, ...) through virtio config options
 static int virtcan_probe(struct virtio_device *vdev)
 {
@@ -209,14 +227,13 @@ static void virtnet_remove(struct virtio_device *vdev)
 }
 
 #ifdef CONFIG_PM_SLEEP
-
 static int virtcan_freeze(struct virtio_device *vdev)
 {
 	struct net_device   *dev  = dev_get_drvdata(vdev->dev);
 	struct virtcan_priv *priv = vdev->priv;
 	int err;
 
-	err = virtcan_chip_disable(priv);
+	err = virtcan_chip_control(priv, VIRTIO_CAN_CTRL_CHIP_DISABLE);
 	if (err)
 		return err;
 
@@ -240,9 +257,8 @@ static int virtcan_restore(struct virtio_device *vdev)
 		netif_start_queue(dev);
 	}
 
-	return virtcan_chip_enable(priv);
+	return virtcan_chip_control(priv, VIRTIO_CAN_CTRL_CHIP_ENABLE);
 }
-
 #endif
 
 static struct virtio_device_id id_table[] = {
