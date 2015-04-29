@@ -163,10 +163,12 @@ static void virtnet_remove(struct virtio_device *vdev)
 	free_netdev(dev);
 }
 
+#ifdef CONFIG_PM_SLEEP
+
 static int virtcan_freeze(struct virtio_device *vdev)
 {
 	struct net_device   *dev  = dev_get_drvdata(vdev->dev);
-	struct virtcan_priv *priv = netdev_priv(dev);
+	struct virtcan_priv *priv = vdev->priv;
 	int err;
 
 	err = virtcan_chip_disable(priv);
@@ -185,7 +187,7 @@ static int virtcan_freeze(struct virtio_device *vdev)
 static int virtcan_restore(struct virtio_device *vdev)
 {
 	struct net_device   *dev  = dev_get_drvdata(vdev->dev);
-	struct virtcan_priv *priv = netdev_priv(dev);
+	struct virtcan_priv *priv = vdev->priv;
 
 	priv->can.state = CAN_STATE_ERROR_ACTIVE;
 	if (netif_running(dev)) {
@@ -195,6 +197,8 @@ static int virtcan_restore(struct virtio_device *vdev)
 
 	return virtcan_chip_enable(priv);
 }
+
+#endif
 
 static struct virtio_device_id id_table[] = {
 	{ VIRTIO_ID_CAN, VIRTIO_DEV_ANY_ID },
@@ -214,8 +218,10 @@ static struct virtio_driver virtio_can_driver = {
 	.probe              = virtcan_probe,
 	.remove             = virtcan_remove,
 	.config_changed     = virtcan_config_changed,
+#ifdef CONFIG_PM_SLEEP
 	.freeze             = virtcan_freeze,
 	.restore            = virtcan_restore,
+#endif
 };
 
 module_virtio_driver(virtio_can_driver);
