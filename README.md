@@ -40,3 +40,10 @@ The Linux driver
 This driver will connect to the virtual device, setup the queues and mailboxes
 according to the parameters, and manage the network device for the SocketCAN
 subsystem.
+
+Outcome
+-------
+
+This project has a 'code now, specify after' approach. After the Linux driver
+is done, it will be easier to create the spec based on the behaviour of the
+code.
