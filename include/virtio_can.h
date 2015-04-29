@@ -30,6 +30,34 @@
 #include <linux/virtio_config.h>
 #include <linux/virtio_types.h>
 
+/*
+ * Control virtqueue data structures
+ *
+ * The control virtqueue expects a header in the first sg entry
+ * and an ack/status response in the last entry.  Data for the
+ * command goes in between.
+ */
+struct virtio_can_ctrl_hdr {
+	__u8 class;
+	__u8 cmd;
+} __attribute__((packed));
+
+typedef __u8 virtio_can_ctrl_ack;
+
+#define VIRTIO_CAN_OK     0
+#define VIRTIO_CAN_ERR    1
+
+/*
+ * Control CAN chip status
+ *
+ * Execute standard CAN controller management operations on the host system.
+ */
+#define VIRTIO_CAN_CTRL_CHIP    0
+ #define VIRTIO_CAN_CTRL_CHIP_ENABLE       0
+ #define VIRTIO_CAN_CTRL_CHIP_DISABLE      1
+ #define VIRTIO_CAN_CTRL_CHIP_FREEZE       2
+ #define VIRTIO_CAN_CTRL_CHIP_UNFREEZE     3
+ #define VIRTIO_CAN_CTRL_CHIP_SOFTRESET    4
 
 #endif /* _LINUX_VIRTIO_CAN_H */
 
