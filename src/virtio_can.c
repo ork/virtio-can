@@ -22,6 +22,17 @@
 #include <linux/can/error.h>
 #include <linux/virtio.h>
 
+/* Communication over virtio-can uses little endian values, according to the
+ * virtio spec.
+ */
+
+/* Structure of the message buffer */
+struct virtcan_mb {
+	u32 can_ctrl;
+	u32 can_id;
+	u64 data;
+};
+
 struct virtcan_priv {
 	struct virtio_device *vdev;
 	struct virtqueue     *cvq;
