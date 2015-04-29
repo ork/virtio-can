@@ -30,6 +30,11 @@
 #include <linux/virtio_config.h>
 #include <linux/virtio_types.h>
 
+/* The feature bitmap for virtio can */
+#define VIRTIO_CAN_F_CTRL_VQ     0	/* Control channel available */ 
+#define VIRTIO_CAN_F_GUEST_CANFD 10	/* Guest can handle CAN-FD frames */
+#define VIRTIO_CAN_F_HOST_CANFD  20	/* Host can handle CAN-FD frames */
+
 /*
  * Control virtqueue data structures
  *

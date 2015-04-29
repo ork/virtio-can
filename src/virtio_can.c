@@ -206,7 +206,8 @@ static struct virtio_device_id id_table[] = {
 };
 
 static unsigned int features[] = {
-	VIRTIO_CAN_F_CANFD,
+	VIRTIO_CAN_F_CTRL_VQ,
+	VIRTIO_CAN_F_GUEST_CANFD, VIRTIO_CAN_F_HOST_CANFD,
 };
 
 static struct virtio_driver virtio_can_driver = {
