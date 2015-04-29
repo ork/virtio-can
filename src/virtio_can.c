@@ -160,6 +160,39 @@ static void virtnet_remove(struct virtio_device *vdev)
 	free_netdev(dev);
 }
 
+static int __maybe_unused virtcan_suspend(struct device *device)
+{
+	struct net_device   *dev  = dev_get_drvdata(device);
+	struct virtcan_priv *priv = netdev_priv(dev);
+	int err;
+
+	err = virtcan_chip_disable(priv);
+	if (err)
+		return err;
+
+	if (netif_running(dev)) {
+		netif_stop_queue(dev);
+		netif_device_detach(dev);
+	}
+	priv->can.state = CAN_STATE_SLEEPING;
+
+	return 0;
+}
+
+static int __maybe_unused virtcan_resume(struct device *device)
+{
+	struct net_device   *dev  = dev_get_drvdata(device);
+	struct virtcan_priv *priv = netdev_priv(dev);
+
+	priv->can.state = CAN_STATE_ERROR_ACTIVE;
+	if (netif_running(dev)) {
+		netif_device_attach(dev);
+		netif_start_queue(dev);
+	}
+
+	return virtcan_chip_enable(priv);
+}
+
 static struct virtio_device_id id_table[] = {
 	{ VIRTIO_ID_CAN, VIRTIO_DEV_ANY_ID },
 	{ 0 },
