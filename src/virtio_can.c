@@ -38,6 +38,9 @@ struct virtcan_priv {
 	struct virtqueue     *cvq;
 	struct can_priv      *can;
 	struct napi_struct    napi;
+
+	struct clk *clk_ipg;
+	struct clk *clk_per;
 };
 
 static int virtcan_start_xmit(struct sk_buff *skb, struct net_device *dev)
@@ -52,6 +55,8 @@ static int virtcan_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	netif_stop_queue(dev);
 
 	can_put_echo_skb(skb, dev, 0);
+
+	// TODO: Write to virtqueues
 
 	return NETDEV_TX_OK;
 }
@@ -107,7 +112,7 @@ static const struct net_device_ops virtcan_netdev_ops = {
 	.ndo_open       = virtcan_open,
 	.ndo_stop       = virtcan_stop,
 	.ndo_start_xmit = virtcan_start_xmit,
-	.ndo_change_mtu = can_change_mut,
+	.ndo_change_mtu = can_change_mtu,
 };
 
 static int virtcan_probe(struct virtio_device *vdev)
@@ -119,6 +124,8 @@ static int virtcan_probe(struct virtio_device *vdev)
 	dev = alloc_candev(sizeof(struct virtcan_priv), 1);
 	if (!dev)
 		return -ENOMEM;
+
+	// TODO: Get clocks (timings, ...) through virtio config options
 
 	priv = netdev_priv(dev);
 	priv->can.clock.freq = clock_freq;
