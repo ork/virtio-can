@@ -45,8 +45,11 @@ struct virtcan_priv {
 	struct can_priv      *can;
 	struct napi_struct    napi;
 
-	struct clk *clk_ipg;
-	struct clk *clk_per;
+	struct clk           *clk_ipg;
+	struct clk           *clk_per;
+
+	/* Has control virtqueue */
+	bool has_cvq;
 };
 
 static int virtcan_start_xmit(struct sk_buff *skb, struct net_device *dev)
@@ -121,6 +124,45 @@ static const struct net_device_ops virtcan_netdev_ops = {
 	.ndo_change_mtu = can_change_mtu,
 };
 
+static bool virtcan_send_command(struct virtcan_priv *priv, u8 class, u8 cmd,
+	struct scatterlist *out)
+{
+	struct scatterlist *sgs[4], hdr, stat;
+	struct virtio_can_ctrl_hdr ctrl;
+	virtio_can_ctrl_ack status = ~0;
+	unsigned out_num = 0, tmp;
+
+	/* Control queue is a needed for basic operation */
+	BUG_ON(!virtio_has_feature(priv->vdev, VIRTIO_CAN_F_CTRL_VQ));
+
+	ctrl = { .class = class, .cmd = cmd };
+	/* Add header */
+	sg_init_one(&hdr, &ctrl, sizeof(ctrl));
+	sgs[out_num++] = &hdr;
+
+	if (out)
+		sgs[out_num++] = out;
+
+	/* Add return status */
+	sg_init_one(&stat, &status, sizeof(status));
+	sgs[out_num] = &stat;
+
+	BUG_ON(out_num + 1 > ARRAY_SIZE(sgs));
+	virtqueue_add_sgs(priv->cvq, sgs, out_num, 1, priv, GFP_ATOMIC);
+
+	if (unlikely(!virtqueue_kick(priv->cvq)))
+		return status == VIRTIO_CAN_OK;
+
+	/* Spin for a response, the kick causes an ioport write, trapping
+	 * into the hypervisor, so the request should be handled immediately.
+	 */
+	while (!virtqueue_get_buf(vi->cvq, &tmp) &&
+	       !virtqueue_is_broken(vi->cvq))
+		cpu_relax();
+
+	return status == VIRTIO_NET_OK;
+}
+
 // TODO: Get clocks (timings, ...) through virtio config options
 static int virtcan_probe(struct virtio_device *vdev)
 {
@@ -147,6 +189,9 @@ static int virtcan_probe(struct virtio_device *vdev)
 	priv->can.clock.freq = clock_freq;
 
 	netif_napi_add(dev, &priv->napi, virtcan_poll, VIRTCAN_NAPI_WEIGHT);
+
+	if (virtio_has_feature(vdev, VIRTIO_CAN_F_CTRL_VQ))
+		priv->has_cvq = true;
 
 	virtio_device_ready(vdev);
 
