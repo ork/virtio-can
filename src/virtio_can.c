@@ -27,6 +27,9 @@
 
 /* Communication over virtio-can uses little endian values, according to the
  * virtio spec.
+ *
+ * Portions of code copied or inspired from virtio_net.c and flexcan.c
+ *
  */
 
 /* Structure of the message buffer */
@@ -160,9 +163,9 @@ static void virtnet_remove(struct virtio_device *vdev)
 	free_netdev(dev);
 }
 
-static int __maybe_unused virtcan_suspend(struct device *device)
+static int virtcan_freeze(struct virtio_device *vdev)
 {
-	struct net_device   *dev  = dev_get_drvdata(device);
+	struct net_device   *dev  = dev_get_drvdata(vdev->dev);
 	struct virtcan_priv *priv = netdev_priv(dev);
 	int err;
 
@@ -179,9 +182,9 @@ static int __maybe_unused virtcan_suspend(struct device *device)
 	return 0;
 }
 
-static int __maybe_unused virtcan_resume(struct device *device)
+static int virtcan_restore(struct virtio_device *vdev)
 {
-	struct net_device   *dev  = dev_get_drvdata(device);
+	struct net_device   *dev  = dev_get_drvdata(vdev->dev);
 	struct virtcan_priv *priv = netdev_priv(dev);
 
 	priv->can.state = CAN_STATE_ERROR_ACTIVE;
@@ -211,6 +214,8 @@ static struct virtio_driver virtio_can_driver = {
 	.probe              = virtcan_probe,
 	.remove             = virtcan_remove,
 	.config_changed     = virtcan_config_changed,
+	.freeze             = virtcan_freeze,
+	.restore            = virtcan_restore,
 };
 
 module_virtio_driver(virtio_can_driver);
