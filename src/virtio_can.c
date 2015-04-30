@@ -83,7 +83,7 @@ static int virtcan_open(struct net_device *dev)
 	if (err)
 		goto out_close;
 
-	err = virtcan_chip_start(dev);
+	err = virtcan_chip_control(dev, VIRTIO_CAN_CTRL_CHIP_START);
 	if (err)
 		goto out_free_irq;
 
@@ -106,7 +106,7 @@ static int virtcan_close(struct net_device *dev)
 
 	netif_stop_queue(dev);
 	napi_disable(&priv->napi);
-	virtcan_chip_stop(dev);
+	virtcan_chip_control(dev, VIRTIO_CAN_CTRL_CHIP_STOP);
 
 	free_irq(dev->irq, dev);
 	clk_disable_unprepare(priv->clk_per);
