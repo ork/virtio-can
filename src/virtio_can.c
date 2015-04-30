@@ -165,6 +165,8 @@ static bool virtcan_send_command(struct virtcan_priv *priv, u8 class, u8 cmd,
 
 static int virtcan_chip_control(struct virtcan_priv *priv, int op)
 {
+	int ret = 0;
+
 	switch (op) {
 	case VIRTIO_CAN_CTRL_CHIP_ENABLE:
 	case VIRTIO_CAN_CTRL_CHIP_DISABLE:
@@ -172,13 +174,14 @@ static int virtcan_chip_control(struct virtcan_priv *priv, int op)
 	case VIRTIO_CAN_CTRL_CHIP_UNFREEZE:
 	case VIRTIO_CAN_CTRL_CHIP_SOFTRESET:
 		if (!virtcan_send_command(priv, VIRTIO_CAN_CTRL_CHIP, op, NULL))
-			return -ETIMEDOUT;
+			ret = -ETIMEDOUT;
 		break;
 	default:
 		pr_debug("virtcan: Unknown chip control operation: %X\n", op);
+		ret = -EBADRQC;
 	}
 
-	return 0;
+	return ret;
 }
 
 // TODO: Get clocks (timings, ...) through virtio config options
