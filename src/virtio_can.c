@@ -184,12 +184,57 @@ static int virtcan_chip_control(struct virtcan_priv *priv, int op)
 	return ret;
 }
 
+static int register_virtcandev(struct virtio_device *vdev)
+{
+	struct net_device *dev = dev_get_drvdata(vdev->dev);
+	u32 err;
+
+	err = clk_prepare_enable(priv->clk_ipg);
+	if (err)
+		return err;
+
+	err = clk_prepare_enable(priv->clk_per);
+	if (err)
+		goto out_disable_ipg;
+
+	err = virtcan_chip_control(vdev->priv, VIRTIO_CAN_CTRL_CHIP_DISABLE);
+	if (err)
+		goto out_disable_per;
+
+	// TODO: clocks settings
+
+	err = virtcan_chip_control(vdev->priv, VIRTIO_CAN_CTRL_CHIP_ENABLE);
+	if (err)
+		goto out_chip_disable;
+
+	// TODO: fifo settings. Maybe vqs ?
+
+	err = register_candev(dev);
+
+out_chip_disable:
+	virtcan_chip_control(vdev->priv, VIRTIO_CAN_CTRL_CHIP_DISABLE);
+out_disable_per:
+	clk_disable_unprepare(priv->clk_per);
+out_disable_ipg:
+	clk_disable_unprepare(priv->clk_ipg);
+
+	return err;
+}
+
+static void unregister_virtcandev(struct virtio_device *vdev)
+{
+	struct net_device *dev = dev_get_drvdata(vdev->dev);
+
+	unregister_candev(dev);
+}
+
 // TODO: Get clocks (timings, ...) through virtio config options
 static int virtcan_probe(struct virtio_device *vdev)
 {
 	struct net_device   *dev;
 	struct virtcan_priv *priv;
 	u32 clock_freq = 0;
+	int err;
 
 	if (!vdev->config->get) {
 		dev_err(&vdev->dev, "%s failure: config access disabled\n",
@@ -214,9 +259,21 @@ static int virtcan_probe(struct virtio_device *vdev)
 	if (virtio_has_feature(vdev, VIRTIO_CAN_F_CTRL_VQ))
 		priv->has_cvq = true;
 
+	err = register_virtcandev(vdev);
+	if (err) {
+		pr_debug("virtcan: registering netdev failed\n");
+		goto failed_register;
+	}
+
 	virtio_device_ready(vdev);
 
 	pr_debug("virtcan: registered device %s\n", dev->name);
+
+	return 0;
+
+failed_register:
+	free_candev(dev);
+	return err;
 }
 
 static void virtnet_remove(struct virtio_device *vdev)
@@ -224,7 +281,7 @@ static void virtnet_remove(struct virtio_device *vdev)
 	struct virtcan_priv *vi = vdev->priv;
 	struct net_device *dev = dev_get_drvdata(vdev->dev);
 
-	unregister_netdev(dev);
+	unregister_virtcandev(vdev);
 	netif_napi_del(&vi->napi);
 	free_netdev(dev);
 }
